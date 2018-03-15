@@ -1,5 +1,10 @@
 <?php
+
 declare(strict_types=1);
+
+const BASE_URL = 'https://syn.su/testwork.php';
+const GET = 'get';
+const UPDATE = 'update';
 
 /**
  * Get response from the server
@@ -8,18 +13,26 @@ declare(strict_types=1);
  */
 function getMessageData(): array
 {
-    return sendRequest(['method' => 'get']);
+    $responseData = sendRequest(GET);
+
+    if (empty($responseData['response'])) {
+        throw new \Exception('There is no data in the server\'s response.');
+    }
+
+    return $responseData['response'];
 }
 
 /**
- * Update message
+ * Send update message
  * @param string $message
- * @return array
+ * @return bool
  * @throws Exception
  */
-function putMessage(string $message): array
+function sendUpdateMessage(string $message): bool
 {
-    return sendRequest(['method' => 'update', 'message' => $message]);
+    $responseData = sendRequest(UPDATE, $message);
+
+    return $responseData['response'] === 'Success';
 }
 
 /**
@@ -43,35 +56,34 @@ function xorCrypt($string, $key): string
 
 /**
  * Send http request
- * @param array $postDate
+ * @param string $method
+ * @param string $message
  * @return array
  * @throws Exception
  */
-function sendRequest(array $postDate): array
+function sendRequest(string $method, string $message = ''): array
 {
+    $queryData = buildQueryData($method, $message);
+
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, BASE_URL);
     curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postDate));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($queryData));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     $serverOutput = curl_exec($ch);
     curl_close($ch);
 
     $responseData = json_decode($serverOutput, true);
-
+    var_dump($responseData);
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new \Exception('Invalid response format json');
     }
-    
+
     if (!empty($responseData['errorCode'])) {
         $message = $responseData['errorMessage'] ?? 'Something goes wrong';
         throw new \Exception($message, $responseData['errorCode']);
-    }
-
-    if (empty($responseData['response'])) {
-        throw new \Exception('There is no data in the server\'s response.');
     }
 
     return $responseData;
@@ -79,12 +91,30 @@ function sendRequest(array $postDate): array
 
 /**
  * Send email
+ * @param string $email
  * @param string $message
  * @return bool
  */
-function sendEmail(string $message): bool
+function sendEmail(string $email, string $message): bool
 {
     $headers = "From: Demon";
 
-    return mail(EMAIL, "Error", $message, $headers);
+    return mail($email, "Error", $message, $headers);
+}
+
+/**
+ * Get query array
+ * @param string $method
+ * @param string $message
+ * @return array
+ */
+function buildQueryData(string $method, string $message): array
+{
+    $queryData = ['method' => $method];
+
+    if (strlen($message) > 0) {
+        $queryData['message'] = $message;
+    }
+
+    return $queryData;
 }
