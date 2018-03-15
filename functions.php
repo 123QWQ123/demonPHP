@@ -76,7 +76,7 @@ function sendRequest(string $method, string $message = ''): array
     curl_close($ch);
 
     $responseData = json_decode($serverOutput, true);
-    var_dump($responseData);
+
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new \Exception('Invalid response format json');
     }
